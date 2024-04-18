@@ -86,6 +86,9 @@ class _HomeState extends State<Home> {
 
 
 
+
+
+
 class MapPage extends StatefulWidget {
   //const MapPage({super.key});
   final List value;
@@ -112,12 +115,52 @@ class _MapPageState extends State<MapPage> {
     long = widget.value[1];
   }
 
+  //マーカー用のList
+  List<Marker> addMarkers = [];
+  //ピンを追加する関数
+  void _addMarker(LatLng latlong) {
+    //マップの更新
+    setState(() {
+      addMarkers.add(
+        Marker(
+          width: 30.0,
+          height: 30.0,
+          point: latlong, 
+          child: GestureDetector(
+            onTap:(){
+              _tapMarker(latlong);
+            },
+            child: const Icon(
+              Icons.location_on,
+              color: Colors.green,
+              size: 50,
+            ),
+          ),
+          rotate: true,
+        ),
+      );
+    });
+  }
+  //マーカー押した時の処理
+  void _tapMarker(LatLng latlong) {
+    showDialog(
+      context: context, 
+      builder: (context) => AlertDialog(
+        title: const Text('ピンの位置'),
+        content: Text('緯度：${latlong.latitude} \n 経度：${latlong.longitude}'),
+        actions: <Widget>[
+          TextButton(
+            child: const Text('閉じる'),
+            onPressed: () => Navigator.of(context).pop(),
+          )
+        ],
+      )
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     nowLocation();
-    print('----');
-    print('la: $lat, lo: $long');
-    print('----');
 
     return MaterialApp(
       title: 'map_app',
@@ -137,6 +180,10 @@ class _MapPageState extends State<MapPage> {
                 initialCenter: LatLng(lat, long),
                 //initialCenter: LatLng(43.0602767, 141.379295),
                 initialZoom: 12.0,
+                //pointはタップした位置がLatLong型で受け取る
+                onTap: (tapPosition, point) {
+                  _addMarker(point);
+                },
               ),
               children: [
                 // 背景地図読み込み (OSM)
@@ -147,6 +194,8 @@ class _MapPageState extends State<MapPage> {
                 CircleLayer(
                   circles: circleMarkers,
                 ),
+                //MarkerLeyerに追加したピンの指定
+                MarkerLayer(markers: addMarkers),
               ],
             ),
 
