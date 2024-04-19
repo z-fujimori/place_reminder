@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
+//import 'package:location/location.dart';
 
 void main() {
   runApp(const MyApp());
@@ -33,30 +34,6 @@ class _HomeState extends State<Home> {
   // List<double> latlong = [];
   @override
   Widget build(BuildContext context) {
-
-    // //completer
-    // final completer = Completer<List>();
-    // Future<List> future = completer.future;
-
-    // Future nowLocation() async {
-    //   print('start');
-    //   Position position = await Geolocator.getCurrentPosition(
-    //     desiredAccuracy: LocationAccuracy.high);
-    //   lat = position.latitude;
-    //   long = position.longitude;
-    //   print('非同期$lat');
-    //   List<double> latlong = [lat,long];
-    //   completer.complete(latlong);
-    //   print('latlong $latlong');
-    //   print('completer $completer');
-    // }
-
-    // nowLocation();
-    // future.then((value) => print(value));
-    // //completer    
-    
-    // print('これはhomeでのnowLocation');
-    // print(future.then);
 
     return Scaffold(
       body: const Center(
@@ -160,7 +137,6 @@ class _MapPageState extends State<MapPage> {
 
   @override
   Widget build(BuildContext context) {
-    nowLocation();
 
     return MaterialApp(
       title: 'map_app',
@@ -218,7 +194,6 @@ class _MapPageState extends State<MapPage> {
 
   Future<void> initLocation() async {
     LocationPermission permission; permission = await Geolocator.requestPermission();
-    //LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
@@ -231,14 +206,6 @@ class _MapPageState extends State<MapPage> {
     final longitude = position.longitude;
     initCircleMarker(latitude, longitude);
     setState(() {});
-  }
-
-  //現在位置を返す
-  Future nowLocation() async {
-    Position position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high);
-    la = position.latitude;
-    lo = position.longitude;
   }
 
   void initCircleMarker(double latitude, double longitude) {

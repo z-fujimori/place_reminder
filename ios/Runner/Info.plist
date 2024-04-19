@@ -60,5 +60,8 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!--iOSの権限-->
+	<key>NSLocationWhenInUseUsageDescription</key>         
+	<string>Your location is required for this app</string>
 </dict>
 </plist>
