@@ -1,11 +1,10 @@
 import 'dart:async';
-import 'dart:ffi';
+//import 'dart:ffi';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:geolocator/geolocator.dart';
-//import 'package:location/location.dart';
+import 'package:location/location.dart';
 
 void main() {
   runApp(const MyApp());
@@ -43,10 +42,32 @@ class _HomeState extends State<Home> {
       floatingActionButton: FloatingActionButton(
         child: Icon(Icons.add),
         onPressed: () async {
-          Position position = await Geolocator.getCurrentPosition(
-            desiredAccuracy: LocationAccuracy.high);
-          final lat = position.latitude;
-          final long = position.longitude;
+          Location location = new Location();
+          bool _serviceEnabled;
+          PermissionStatus _permissionGranted;
+          LocationData _locationData;
+          _serviceEnabled = await location.serviceEnabled();
+          if (!_serviceEnabled) {
+            _serviceEnabled = await location.requestService();
+            if (!_serviceEnabled) {
+              return;
+            }
+          }
+          print("!");
+          _permissionGranted = await location.hasPermission();
+          if (_permissionGranted == PermissionStatus.denied) {
+            _permissionGranted = await location.requestPermission();
+            if (_permissionGranted != PermissionStatus.granted) {
+              return;
+            }
+          }
+          _locationData = await location.getLocation();
+          print("!!");
+
+          //Position position = await Geolocator.getCurrentPosition(
+          //  desiredAccuracy: LocationAccuracy.high);
+          final lat = _locationData.latitude!;
+          final long = _locationData.longitude!;
           print('非同期$lat');
           List<double> latlong = [lat,long];
           Navigator.push(
@@ -193,17 +214,29 @@ class _MapPageState extends State<MapPage> {
   }
 
   Future<void> initLocation() async {
-    LocationPermission permission; permission = await Geolocator.requestPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        return Future.error('Location permissions are denied');
+    bool _serviceEnabled;
+    Location location = new Location();
+    PermissionStatus _permissionGranted;
+
+    _serviceEnabled = await location.serviceEnabled();
+    if (!_serviceEnabled) {
+      _serviceEnabled = await location.requestService();
+      if (!_serviceEnabled) {
+        return Future.error('Location permissions are denied');      
       }
     }
-    Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high);
-    final latitude = position.latitude;
-    final longitude = position.longitude;
+    _permissionGranted = await location.hasPermission();
+    if (_permissionGranted == PermissionStatus.denied) {
+      _permissionGranted = await location.requestPermission();
+      if (_permissionGranted != PermissionStatus.granted) {
+        return Future.error('Location permissions are denied');      
+      }
+    }
+
+    
+    LocationData _locationData = await location.getLocation();
+    final latitude = _locationData.latitude!;
+    final longitude = _locationData.longitude!;
     initCircleMarker(latitude, longitude);
     setState(() {});
   }
