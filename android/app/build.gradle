@@ -2,7 +2,12 @@ plugins {
     id "com.android.application"
     id "kotlin-android"
     id "dev.flutter.flutter-gradle-plugin"
+    id "dev.flutter.flutter-plugin-loader" version "1.0.0"
+    id "org.jetbrains.kotlin.android" version "{kotlinVersion}" apply false
 }
+// plugins {
+//     //id "com.android.application" version "{agpVersion}" apply false
+// }
 
 def localProperties = new Properties()
 def localPropertiesFile = rootProject.file('local.properties')
@@ -24,7 +29,8 @@ if (flutterVersionName == null) {
 
 android {
     namespace "com.example.place_reminder"
-    compileSdkVersion flutter.compileSdkVersion
+    compileSdkVersion 34
+    // compileSdkVersion flutter.compileSdkVersion //エラーによりバージョン指定
     ndkVersion flutter.ndkVersion
 
     compileOptions {
@@ -45,7 +51,8 @@ android {
         applicationId "com.example.place_reminder"
         // You can update the following values to match your application needs.
         // For more information, see: https://docs.flutter.dev/deployment/android#reviewing-the-gradle-build-configuration.
-        minSdkVersion flutter.minSdkVersion
+        minSdkVersion 21
+        // minSdkVersion flutter.minSdkVersion //エラーによりバージョン指定
         targetSdkVersion flutter.targetSdkVersion
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
