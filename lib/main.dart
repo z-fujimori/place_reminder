@@ -5,6 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:location/location.dart';
+import 'package:vibration/vibration.dart';
+import 'notificationController.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+//import 'package:flutter_native_timezone/flutter_native_timezone.dart'; //これもう古いらしい
+import 'package:flutter_timezone/flutter_timezone.dart';
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 
 void main() {
   runApp(const MyApp());
@@ -27,17 +34,152 @@ class Home extends StatefulWidget {
   @override
   State<Home> createState() => _HomeState();
 }
-class _HomeState extends State<Home> {
-  // double lat = 0;
-  // double long = 0;
-  // List<double> latlong = [];
+class _HomeState extends State<Home> with WidgetsBindingObserver { //WidgetsBindingObserver で状態を監視 paused.resumed.inactive.detached
+  
+  final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+  //flutter_local_notificationの初期化
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance!.addObserver(this); //状態管理
+    _init();
+  }
+  @override
+  void dispose() {
+    WidgetsBinding.instance!.removeObserver(this); //状態管理
+    super.dispose();
+  }
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      //FlutterAppBadger.removeBadge();
+    }
+  }
+  Future<void> _init() async {
+    await _configureLocalTimeZone();
+    await _initializeNotification();
+  }
+  // 端末の現在時間を登録
+  Future<void> _configureLocalTimeZone() async {
+    tz.initializeTimeZones();
+    final String? timeZoneName = await FlutterTimezone.getLocalTimezone();
+    tz.setLocalLocation(tz.getLocation(timeZoneName!));
+  }
+  // iOSのメッセージ権限リクエストを初期化
+  Future<void> _initializeNotification() async {
+    const DarwinInitializationSettings initializationSettingsIOS =
+        DarwinInitializationSettings(
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
+    );
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('icon');
+    const InitializationSettings initializationSettings =
+        InitializationSettings(
+      android: initializationSettingsAndroid,
+      iOS: initializationSettingsIOS,
+    );
+    await _flutterLocalNotificationsPlugin.initialize(initializationSettings);
+  }
+  Future<void> _cancelNotification() async {
+    await _flutterLocalNotificationsPlugin.cancelAll(); //cancelAll()を使い以前登録されたメッセをキャンセル
+  }
+  //iOSに権限をリクエスト
+  Future<void> _requestPermissions() async {
+    await _flutterLocalNotificationsPlugin
+      .resolvePlatformSpecificImplementation<
+        IOSFlutterLocalNotificationsPlugin>()
+      ?.requestPermissions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+  }
+  //メッセージ登録の関数
+  Future<void> _registerMessage({
+    required int hour,
+    required int minutes,
+    required message,
+  }) async {
+    final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
+    tz.TZDateTime scheduledDate = tz.TZDateTime(
+      tz.local,
+      now.year,
+      now.month,
+      now.day,
+      hour,
+      minutes,
+    );
+    await _flutterLocalNotificationsPlugin.zonedSchedule(
+      0,
+      'flutter_local_notifications',
+      message,
+      scheduledDate,
+      NotificationDetails(
+        android: AndroidNotificationDetails(
+          'channel id',
+          'channel name',
+          importance: Importance.max,
+          priority: Priority.high,
+          ongoing: true,
+          styleInformation: BigTextStyleInformation(message),
+          icon: 'icon',
+        ),
+        iOS: const DarwinNotificationDetails(
+          badgeNumber: 1,
+        ),
+      ),
+      androidAllowWhileIdle: true,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+      matchDateTimeComponents: DateTimeComponents.time,
+    );
+    print('push通知');
+  }
+
+
+
   @override
   Widget build(BuildContext context) {
 
     return Scaffold(
-      body: const Center(
-        child: 
-        Text('Home'),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            Text('Home'),
+            ElevatedButton(
+              onPressed: () async {
+                // 振動させる
+                Vibration.vibrate();
+                // // 振動機能があるか確認する
+                // if (await Vibration.hasVibrator()) {
+                //     Vibration.vibrate();
+                // }
+                // １秒間振動させる
+                Vibration.vibrate(duration: 1000);
+                // 振動を止める
+                Vibration.cancel();
+              }, 
+              child: Text('実験用ボタン'),
+            ),
+            ElevatedButton(
+              onPressed: ()async{
+                await _cancelNotification(); //登録されていたメッセージ削除
+                await _requestPermissions(); //権限
+                //await NotificationController().showNotification(); //別dartファイルの関数呼び出し
+                final tz.TZDateTime now = tz.TZDateTime.now(tz.local); //現在時刻取得
+                await _registerMessage(
+                  hour: now.hour, 
+                  minutes: now.minute + 1, 
+                  message: 'Hello World!',
+                );
+              }, 
+              child: const Text('push通知')
+            ),
+          ],
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         child: Icon(Icons.add),
@@ -81,6 +223,7 @@ class _HomeState extends State<Home> {
     );
   }
 }
+
 
 
 
