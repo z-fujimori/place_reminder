@@ -2,8 +2,8 @@ plugins {
     id "com.android.application"
     id "kotlin-android"
     id "dev.flutter.flutter-gradle-plugin"
-    id "dev.flutter.flutter-plugin-loader" version "1.0.0"
-    id "org.jetbrains.kotlin.android" version "{kotlinVersion}" apply false
+    //id "dev.flutter.flutter-plugin-loader" version "1.0.0"
+    //id "org.jetbrains.kotlin.android" version "$kotlin_version" apply false//"{kotlinVersion}" apply false
 }
 // plugins {
 //     //id "com.android.application" version "{agpVersion}" apply false
@@ -36,6 +36,8 @@ android {
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
+        //プッシュ通知
+        coreLibraryDesugaringEnabled true
     }
 
     kotlinOptions {
@@ -56,6 +58,8 @@ android {
         targetSdkVersion flutter.targetSdkVersion
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
+        //プッシュ通知
+        multiDexEnabled true
     }
 
     buildTypes {
@@ -71,4 +75,9 @@ flutter {
     source '../..'
 }
 
-dependencies {}
+dependencies {
+    //push通知
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.1.5'
+    implementation 'androidx.window:window:1.0.0'
+    implementation 'androidx.window:window-java:1.0.0'
+}
