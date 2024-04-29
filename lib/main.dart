@@ -182,7 +182,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver { //WidgetsBind
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        child: Icon(Icons.add),
+        child: Icon(Icons.map_outlined),
         onPressed: () async {
           Location location = new Location();
           bool _serviceEnabled;
@@ -242,10 +242,14 @@ class MapPage extends StatefulWidget {
 class _MapPageState extends State<MapPage> {
   String _title = 'Sample flutter_map mmmmmm';
   List<CircleMarker> circleMarkers = [];
-  double la = 35.681;
-  double lo =  139.767;
+  double celect_la = 35.681; //選択した場所の緯度経度。リマインド作成用
+  double celect_lo =  139.767;
   late double lat;
   late double long;
+  bool addMode = false;
+  var mapIcon = Icon(Icons.add);
+  bool isCelectPlace = false; //場所を選択しているか。trueでリマインド作成可能
+  
 
   @override
   void initState() {
@@ -299,21 +303,46 @@ class _MapPageState extends State<MapPage> {
     );
   }
 
+  //マップ触った時の処理。リマインド作成候補
+  void _celectPoint(LatLng latlong){
+    setState(() {
+      if (!isCelectPlace) {
+        isCelectPlace = true;
+      }
+      celect_la = latlong.latitude;
+      celect_lo = latlong.longitude;
+      
+    });
+  }
+  //ボタン押した時の処理.リマンダー作成ダイアログ出現
+  void _modeChange(double lat, double long) {
+    showDialog(
+      context: context, 
+      builder: (context) => AlertDialog(
+        title: const Text('ピンの位置'),
+        content: Text('緯度：${lat} \n 経度：${long}'),
+        actions: <Widget>[
+          TextButton(
+            child: const Text('閉じる'),
+            onPressed: () => Navigator.of(context).pop(),
+          )
+        ],
+      )
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
 
     return MaterialApp(
-      title: 'map_app',
+      //title: 'map_app',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
       home: Scaffold(
-        appBar: AppBar(
-          title: Text(_title),
-        ),
         // flutter_map設定
         body: Stack(
-          children: [
+          children: <Widget>[
             FlutterMap(
               // マップ表示設定
               options: MapOptions(
@@ -323,6 +352,7 @@ class _MapPageState extends State<MapPage> {
                 //pointはタップした位置がLatLong型で受け取る
                 onTap: (tapPosition, point) {
                   _addMarker(point);
+                  _celectPoint(point);
                 },
               ),
               children: [
@@ -338,19 +368,63 @@ class _MapPageState extends State<MapPage> {
                 MarkerLayer(markers: addMarkers),
               ],
             ),
-
-            
+            Stack(
+              children: [
+                Image.asset('images/marker.png'),
+                Opacity(
+                  opacity: 0.8,
+                  )
+              ],
+            ),
+            const Align(
+              alignment: Alignment(-0.7, -0.8),
+              child: Text(
+                "場所を選択して\nリマインドを追加",
+                style: TextStyle(
+                  fontSize: 25,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            //画面下部isSelect
+            Align(
+              alignment: Alignment(-0.08, 0.87),
+              child: (isCelectPlace) ? Container(
+                width: 300,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: Color.fromARGB(255, 216, 216, 216),
+                  borderRadius: BorderRadius.circular(16.0),
+                ),
+                child: Align(
+                  alignment: Alignment(-0.4, 0),
+                  child: Text(
+                    '緯度:${celect_la.toStringAsFixed(3)}, 緯度:${celect_lo.toStringAsFixed(3)}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ) : Container(),
+            ),
+            Align(
+              alignment: Alignment(0.87,0.87),
+              child: (isCelectPlace) ? ElevatedButton(
+                  child: Icon(
+                    Icons.edit_square,
+                    size: 36,
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    fixedSize: Size(80, 60)
+                  ),
+                  onPressed: () {
+                    _modeChange(celect_la,celect_lo);
+                  },
+                ) : Container(),
+            ),
           ],
-        ),
-        floatingActionButton: FloatingActionButton(
-          child: const Icon(Icons.add),
-          onPressed: () {
-            // Navigator.pushReplacement(
-            //   context,
-            //   MaterialPageRoute(
-            //       builder: (BuildContext context) => super.widget)
-            // );
-          },
         ),
       ),
     );
@@ -399,3 +473,27 @@ class _MapPageState extends State<MapPage> {
 }
 
 
+
+
+
+//閉じるボタン。使い回す
+Widget closeButton(
+  BuildContext context,
+  double buttonSize,
+  Function() onPressed,
+) {
+  return SizedBox(
+    width: buttonSize * 1.2,
+    height: buttonSize * 1.2,
+    child: FloatingActionButton(
+      child: Icon(
+        Icons.clear,
+        size: buttonSize,
+        color: Colors.white,
+      ),
+      onPressed: () {
+        onPressed();
+      },
+    ),
+  );
+}
