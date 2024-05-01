@@ -356,6 +356,7 @@ class _MapPageState extends State<MapPage> {
                     ),
                     ElevatedButton(
                       onPressed: () {
+                        print("入力内容");
                         print(title);
                         print(memo);
                         print(_flagVib);
