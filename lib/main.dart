@@ -2,6 +2,7 @@ import 'dart:async';
 //import 'dart:ffi';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:location/location.dart';
@@ -328,76 +329,94 @@ class _MapPageState extends State<MapPage> {
           builder: (context, setState) {
             return AlertDialog(
               insetPadding: EdgeInsets.all(16), // 枠とのパディング
-              title: const Text('ピンの位置'),
+              
               content: Container(
                 width: 400,
-                child: Column(
-                  children: [
-                    Text('緯度：${lat} \n 経度：${long}'),
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: TextFormField(
-                        decoration: const InputDecoration(icon: Icon(Icons.label_outline_sharp)),
-                        onChanged: (value) {
-                          title = value;
-                        }
-                      ),
-                    ),
-                    TextField(
-                      decoration: InputDecoration(
-                        labelText: "メモ",
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(5.0), // 枠線の丸み
+                height: 380,
+                child: GestureDetector( // キーボード以外をタップすると閉じるためにGestureDetectorを使用
+                  onTap: () {
+                    print("画面外たっぷ");
+                    FocusScope.of(context).unfocus();
+                  },
+                  child: ListView(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: TextFormField(
+                          decoration: const InputDecoration(icon: Icon(Icons.label_outline_sharp)),
+                          onChanged: (value) {
+                            title = value;
+                          }
                         ),
                       ),
-                      onChanged: (value){
-                        memo = value;
-                      },
-                    ),
-                    ElevatedButton(
-                      onPressed: () {
-                        print("入力内容");
-                        print(title);
-                        print(memo);
-                        print(_flagVib);
-                      }, 
-                      child: Text("追加"),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.all(10.0),
-                      child: Column(
-                        children: <Widget>[
-                          CheckboxListTile(
-                            activeColor: Colors.blue,
-                            title: Text('バイブレーションで通知を行う'),
-                            //subtitle: Text('チェックボックスのサブタイトル'),
-                            secondary: Icon(
-                              Icons.waving_hand,
-                              color: _flagVib ? Colors.orange[700] : Colors.grey[500],
+                      TextField(
+                          keyboardType: TextInputType.multiline,
+                          maxLines: 5,
+                          minLines: 4,
+                          decoration: InputDecoration(
+                            labelText: "メモ",
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(5.0), // 枠線の丸み
                             ),
-                            controlAffinity: ListTileControlAffinity.leading,
-                            value: _flagVib,
-                            onChanged:(bool? value) { 
-                              setState(() {
-                                _flagVib = !_flagVib;
-                              });
-                              print("チェックボタン");
-                              print(_flagVib);
-                            },
-                          )
-                        ]
+                          ),
+                          onChanged: (value){
+                            memo = value;
+                          },
                       ),
-                    ),
-                  ],
+                      Container(
+                        padding: const EdgeInsets.all(10.0),
+                        child: Column(
+                          children: <Widget>[
+                            CheckboxListTile(
+                              activeColor: Colors.blue,
+                              title: Text('バイブレーションで通知を行う'),
+                              //subtitle: Text('チェックボックスのサブタイトル'),
+                              secondary: Icon(
+                                Icons.waving_hand,
+                                color: _flagVib ? Colors.orange[700] : Colors.grey[500],
+                              ),
+                              controlAffinity: ListTileControlAffinity.leading,
+                              value: _flagVib,
+                              onChanged:(bool? value) { 
+                                setState(() {
+                                  _flagVib = !_flagVib;
+                                });
+                              },
+                            )
+                          ]
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          ElevatedButton(
+                            onPressed: () {
+                              print("入力内容");
+                              print(title);
+                              print(memo);
+                              print(_flagVib);
+                              Navigator.of(context).pop();
+                            }, 
+                            child: const Text("追加"),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                            }, 
+                            child: const Text("閉じる"),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
 
               ),
-              actions: <Widget>[
-                TextButton(
-                  child: const Text('閉じる'),
-                  onPressed: () => Navigator.of(context).pop(),
-                )
-              ],
+              // actions: <Widget>[
+              //   TextButton(
+              //     child: const Text('閉じる'),
+              //     onPressed: () => Navigator.of(context).pop(),
+              //   )
+              // ],
             );
             
           }
