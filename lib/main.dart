@@ -6,6 +6,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:location/location.dart';
+import 'package:place_reminder/model/reminder.dart';
 import 'package:vibration/vibration.dart';
 import 'notificationController.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -13,24 +14,38 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
+import 'package:flutter/material.dart';
+import 'package:isar/isar.dart';
+//import 'package:isar_app/model/reminder.dart';
+//import 'package:isar_app/view.dart';
+import 'package:path_provider/path_provider.dart';
 
-void main() {
-  runApp(const MyApp());
+void main() async{
+  WidgetsFlutterBinding.ensureInitialized();
+  final dir = await getApplicationDocumentsDirectory();
+  final isar = await Isar.open(
+    [ReminderSchema],
+    directory: dir.path,
+  );
+  runApp(MyApp(isar: isar));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final Isar isar;
+
+  MyApp({super.key, required this.isar});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: const Home(),
+    return MaterialApp(
+      home: Home(isar: isar),
     );
   }
 }
 
 class Home extends StatefulWidget {
-  const Home({super.key});
+  const Home({Key? key, required this.isar}) : super(key: key);
+  final Isar isar;
 
   @override
   State<Home> createState() => _HomeState();
@@ -139,8 +154,15 @@ class _HomeState extends State<Home> with WidgetsBindingObserver { //WidgetsBind
     print('push通知');
   }
 
-
-
+  List<Reminder> reminders = [];
+  // データベースの中身を取得する関数
+  Future<void> loadData() async {
+    final data = await widget.isar.reminders.where().findAll();
+    setState(() {
+      reminders = data;
+    });
+  }
+  
   @override
   Widget build(BuildContext context) {
 
@@ -150,18 +172,53 @@ class _HomeState extends State<Home> with WidgetsBindingObserver { //WidgetsBind
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             Text('Home'),
+
+            //データ表示
+            // ListView.builder(
+            //     itemCount: reminders.length,
+            //     itemBuilder: (context, index) {
+                  // final reminder = reminders[index];
+            //       return ListTile(
+            //         title: Text(reminder.title ?? "値が入ってません"),
+            //         trailing: IconButton(
+            //           icon: const Icon(Icons.delete),
+            //           onPressed: () async {
+            //             // ここでデータベースから削除しています
+            //             await widget.isar.writeTxn(() async {
+            //               await widget.isar.reminders.delete(reminder.id);
+            //             });
+            //             await loadData();
+            //           },
+            //         )
+            //       );
+            //     }
+            // ),
             ElevatedButton(
               onPressed: () async {
                 // 振動させる
                 Vibration.vibrate();
-                // // 振動機能があるか確認する
-                // if (await Vibration.hasVibrator()) {
-                //     Vibration.vibrate();
-                // }
                 // １秒間振動させる
                 Vibration.vibrate(duration: 1000);
                 // 振動を止める
                 Vibration.cancel();
+                //data挿入
+                final title = "test1";
+                final memo = "body1";
+                final isVib = true;
+                final laat = 13.5;
+                final loonng = 177.5;
+                final reminder = Reminder() 
+                  ..title = title
+                  ..memo = memo
+                  ..isVib = isVib
+                  ..lat = laat
+                  ..long = loonng;
+                  await widget.isar.writeTxn(() async{
+                    await widget.isar.reminders.put(reminder);
+                    await loadData();
+                    print(reminders[0].title);
+                    print(reminders.length);
+                  });
               }, 
               child: Text('実験用ボタン'),
             ),
@@ -369,7 +426,7 @@ class _MapPageState extends State<MapPage> {
                           children: <Widget>[
                             CheckboxListTile(
                               activeColor: Colors.blue,
-                              title: Text('バイブレーションで通知を行う'),
+                              title: const Text('バイブレーションで通知を行う'),
                               //subtitle: Text('チェックボックスのサブタイトル'),
                               secondary: Icon(
                                 Icons.waving_hand,
@@ -404,6 +461,7 @@ class _MapPageState extends State<MapPage> {
                             }, 
                             child: const Text("閉じる"),
                           ),
+
                         ],
                       ),
                     ],
