@@ -173,7 +173,10 @@ class _HomeState extends State<Home> with WidgetsBindingObserver { //WidgetsBind
         itemBuilder: (context, index) {
           final reminder = reminders[index];
           return ListTile(
-            title: Text(reminder.title ?? "!! 値が入ってません !!"),
+            title: Text(
+              reminder.title ?? "!! 値が入ってません !!",
+              overflow: TextOverflow.ellipsis,
+            ),
             trailing: IconButton(
               icon: const Icon(Icons.delete),
               onPressed: () async {
@@ -296,7 +299,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver { //WidgetsBind
           Navigator.push(
             context, 
             MaterialPageRoute(
-              builder: (context) => MapPage(value: latlong, isar: widget.isar),
+              builder: (context) => MapPage(value: latlong, isar: widget.isar, reminders: reminders),
             ),
           );
         },
@@ -307,21 +310,16 @@ class _HomeState extends State<Home> with WidgetsBindingObserver { //WidgetsBind
 
 
 
-
-
-
-
 class MapPage extends StatefulWidget {
-  const MapPage({Key? key, required this.value, required this.isar}) : super(key: key);
+  const MapPage({Key? key, required this.value, required this.isar, required this.reminders}) : super(key: key);
   final Isar isar;
   final List value;
-
+  final List<Reminder> reminders;
 
   @override
   State<MapPage> createState() => _MapPageState();
 }
 class _MapPageState extends State<MapPage> {
-  String _title = 'Sample flutter_map mmmmmm';
   List<CircleMarker> circleMarkers = [];
   double celect_la = 35.681; //選択した場所の緯度経度。リマインド作成用
   double celect_lo =  139.767;
@@ -331,7 +329,7 @@ class _MapPageState extends State<MapPage> {
   var mapIcon = Icon(Icons.add);
   bool isCelectPlace = false; //場所を選択しているか。trueでリマインド作成可能
   
-  
+  List<Reminder> reminders = [];
 
   @override
   void initState() {
@@ -340,22 +338,16 @@ class _MapPageState extends State<MapPage> {
     // 受け取ったデータを状態を管理する変数に格納
     lat = widget.value[0];
     long = widget.value[1];
-    loadData();
+    reminders = widget.reminders;
+    //loadData();
+    loadMapPin();
   }
 
-  List<Reminder> reminders = [];
-  // データベースの中身を取得する関数
-  Future<void> loadData() async {
-    final data = await widget.isar.reminders.where().findAll();
-    setState(() {
-      reminders = data;
-    });
-  }
 
-  //マーカー用のList
   List<Marker> addMarkers = [];
+  //マーカー用のList
   //ピンを追加する関数
-  void _addMarker(LatLng latlong) {
+  void _addMarker(LatLng latlong,String title, String? memo, bool isVib) {
     //マップの更新
     setState(() {
       addMarkers.add(
@@ -365,7 +357,61 @@ class _MapPageState extends State<MapPage> {
           point: latlong, 
           child: GestureDetector(
             onTap:(){
-              _tapMarker(latlong);
+              _tapMarker(title, memo, isVib);
+            },
+            child: const Icon(
+              Icons.location_on,
+              color: Colors.green,
+              size: 50,
+            ),
+          ),
+          rotate: true,
+        ),
+      );
+    });
+  }
+  //remindd作成候補のピンを立てる
+  void _addTempMarker(LatLng latlong) {
+    if (isCelectPlace) {
+      addMarkers.removeLast();
+    }
+    //マップの更新
+    setState(() {
+      addMarkers.add(
+        Marker(
+          width: 30.0,
+          height: 30.0,
+          point: latlong, 
+          child: GestureDetector(
+            child: const Icon(
+              Icons.location_on,
+              color: Color.fromARGB(255, 80, 193, 191),
+              size: 50,
+            ),
+          ),
+          rotate: true,
+        ),
+      );
+    });
+  }
+  // データベースの中身を取得する関数
+  Future<void> loadData() async {
+    final data = await widget.isar.reminders.where().findAll();
+    setState(() {
+      reminders = data;
+    });
+  }
+  void loadMapPin() {
+    reminders.forEach((element) {
+      LatLng lalo = LatLng(element.lat!, element.long!);
+      addMarkers.add(
+        Marker(
+          width: 30.0,
+          height: 30.0,
+          point: lalo, 
+          child: GestureDetector(
+            onTap:(){
+              _tapMarker(element.title!, element.memo, element.isVib!);
             },
             child: const Icon(
               Icons.location_on,
@@ -379,12 +425,44 @@ class _MapPageState extends State<MapPage> {
     });
   }
   //マーカー押した時の処理
-  void _tapMarker(LatLng latlong) {
+  void _tapMarker(String title, String? memo, bool isVib) {
+    if (memo == null) {
+      String memo = "メモなし";
+    }
     showDialog(
       context: context, 
       builder: (context) => AlertDialog(
-        title: const Text('ピンの位置'),
-        content: Text('緯度：${latlong.latitude} \n 経度：${latlong.longitude}'),
+        title: Text(
+          title,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis
+        ),
+        insetPadding: EdgeInsets.all(45), // 枠とのパディング
+        content: Container(
+                width: 400,
+                height: 150,
+          child: Column(
+            children: [
+              Container(
+                width: 400,
+                height: 120,
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      Text(
+                        memo!,
+                        overflow: TextOverflow.visible,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            Container(
+              child: (isVib)?Text("バイブレーションあり"):Text("バイブレーションなし"),
+            ),
+            ],
+          ),
+        ),
         actions: <Widget>[
           TextButton(
             child: const Text('閉じる'),
@@ -403,7 +481,6 @@ class _MapPageState extends State<MapPage> {
       }
       celect_la = latlong.latitude;
       celect_lo = latlong.longitude;
-      
     });
   }
   //ボタン押した時の処理.リマンダー作成ダイアログ出現
@@ -480,12 +557,9 @@ class _MapPageState extends State<MapPage> {
                         children: [
                           ElevatedButton(
                             onPressed: () async {
-                              // print("入力内容");
-                              // print(title);
-                              // print(memo);
-                              // print(_flagVib);
-
-
+                              //候補地ピンを削除
+                              reminders.removeLast();
+                              //reminderを作成しDBに挿入
                               final reminder = Reminder() 
                                 ..title = title
                                 ..memo = memo
@@ -498,8 +572,9 @@ class _MapPageState extends State<MapPage> {
                                   print(reminders[reminders.length-1].title);
                                   print(reminders.length);
                                 });
+                                _addMarker(LatLng(celect_la, celect_lo),title,memo,_flagVib); 
 
-                              Navigator.of(context).pop();
+                              Navigator.of(context).pop(); // ダイアログを閉じる
                             }, 
                             child: const Text("追加"),
                           ),
@@ -551,7 +626,7 @@ class _MapPageState extends State<MapPage> {
                 initialZoom: 12.0,
                 //pointはタップした位置がLatLong型で受け取る
                 onTap: (tapPosition, point) {
-                  _addMarker(point);
+                  _addTempMarker(point);
                   _celectPoint(point);
                 },
               ),
@@ -661,7 +736,6 @@ class _MapPageState extends State<MapPage> {
         return Future.error('Location permissions are denied');      
       }
     }
-
     
     LocationData _locationData = await location.getLocation();
     final latitude = _locationData.latitude!;
