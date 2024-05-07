@@ -59,6 +59,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver { //WidgetsBind
     super.initState();
     WidgetsBinding.instance!.addObserver(this); //状態管理
     _init();
+    loadData();
   }
   @override
   void dispose() {
@@ -167,13 +168,12 @@ class _HomeState extends State<Home> with WidgetsBindingObserver { //WidgetsBind
   Widget build(BuildContext context) {
 
     return Scaffold(
-      appBar: AppBar(title: const Text('データを表示')),
       body: ListView.builder(
         itemCount: reminders.length,
         itemBuilder: (context, index) {
           final reminder = reminders[index];
           return ListTile(
-            title: Text(reminder.title ?? "値が入ってません"),
+            title: Text(reminder.title ?? "!! 値が入ってません !!"),
             trailing: IconButton(
               icon: const Icon(Icons.delete),
               onPressed: () async {
@@ -340,6 +340,7 @@ class _MapPageState extends State<MapPage> {
     // 受け取ったデータを状態を管理する変数に格納
     lat = widget.value[0];
     long = widget.value[1];
+    loadData();
   }
 
   List<Reminder> reminders = [];
@@ -624,6 +625,18 @@ class _MapPageState extends State<MapPage> {
                 ) : Container(),
             ),
           ],
+        ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.endTop,
+        floatingActionButton: FloatingActionButton(
+          child: Icon(Icons.menu),
+            onPressed: () async {
+              Navigator.push(
+              context, 
+              MaterialPageRoute(
+                builder: (context) => Home(isar: widget.isar),
+              ),
+            );
+          }
         ),
       ),
     );
