@@ -167,11 +167,32 @@ class _HomeState extends State<Home> with WidgetsBindingObserver { //WidgetsBind
   Widget build(BuildContext context) {
 
     return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Text('Home'),
+      appBar: AppBar(title: const Text('データを表示')),
+      body: ListView.builder(
+        itemCount: reminders.length,
+        itemBuilder: (context, index) {
+          final reminder = reminders[index];
+          return ListTile(
+            title: Text(reminder.title ?? "値が入ってません"),
+            trailing: IconButton(
+              icon: const Icon(Icons.delete),
+              onPressed: () async {
+                // ここでデータベースから削除しています
+                await widget.isar.writeTxn(() async {
+                  await widget.isar.reminders.delete(reminder.id);
+                });
+                await loadData();
+              },
+            )
+          );
+        },
+      ),
+      
+      // Center(
+      //   child: Column(
+      //     mainAxisAlignment: MainAxisAlignment.center,
+      //     children: <Widget>[
+      //       Text('Home'),
 
             //データ表示
             // ListView.builder(
@@ -193,6 +214,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver { //WidgetsBind
             //       );
             //     }
             // ),
+            /*
             ElevatedButton(
               onPressed: () async {
                 // 振動させる
@@ -236,9 +258,10 @@ class _HomeState extends State<Home> with WidgetsBindingObserver { //WidgetsBind
               }, 
               child: const Text('push通知')
             ),
-          ],
-        ),
-      ),
+            */
+      //     ],
+      //   ),
+      // ),
       floatingActionButton: FloatingActionButton(
         child: Icon(Icons.map_outlined),
         onPressed: () async {
@@ -273,7 +296,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver { //WidgetsBind
           Navigator.push(
             context, 
             MaterialPageRoute(
-              builder: (context) => MapPage(value: latlong)
+              builder: (context) => MapPage(value: latlong, isar: widget.isar),
             ),
           );
         },
@@ -289,10 +312,10 @@ class _HomeState extends State<Home> with WidgetsBindingObserver { //WidgetsBind
 
 
 class MapPage extends StatefulWidget {
-  //const MapPage({super.key});
+  const MapPage({Key? key, required this.value, required this.isar}) : super(key: key);
+  final Isar isar;
   final List value;
 
-  const MapPage({Key? key, required this.value}) : super(key: key);
 
   @override
   State<MapPage> createState() => _MapPageState();
@@ -317,6 +340,15 @@ class _MapPageState extends State<MapPage> {
     // 受け取ったデータを状態を管理する変数に格納
     lat = widget.value[0];
     long = widget.value[1];
+  }
+
+  List<Reminder> reminders = [];
+  // データベースの中身を取得する関数
+  Future<void> loadData() async {
+    final data = await widget.isar.reminders.where().findAll();
+    setState(() {
+      reminders = data;
+    });
   }
 
   //マーカー用のList
@@ -446,11 +478,26 @@ class _MapPageState extends State<MapPage> {
                       Row(
                         children: [
                           ElevatedButton(
-                            onPressed: () {
-                              print("入力内容");
-                              print(title);
-                              print(memo);
-                              print(_flagVib);
+                            onPressed: () async {
+                              // print("入力内容");
+                              // print(title);
+                              // print(memo);
+                              // print(_flagVib);
+
+
+                              final reminder = Reminder() 
+                                ..title = title
+                                ..memo = memo
+                                ..isVib = _flagVib
+                                ..lat = celect_la
+                                ..long = celect_lo;
+                                await widget.isar.writeTxn(() async{
+                                  await widget.isar.reminders.put(reminder);
+                                  await loadData();
+                                  print(reminders[reminders.length-1].title);
+                                  print(reminders.length);
+                                });
+
                               Navigator.of(context).pop();
                             }, 
                             child: const Text("追加"),
