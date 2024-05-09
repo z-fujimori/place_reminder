@@ -6,6 +6,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:location/location.dart';
+// import 'package:permission_handler/permission_handler.dart';
 import 'package:place_reminder/model/reminder.dart';
 import 'package:vibration/vibration.dart';
 import 'notificationController.dart';
@@ -269,6 +270,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver { //WidgetsBind
         child: Icon(Icons.map_outlined),
         onPressed: () async {
           Location location = new Location();
+          location.enableBackgroundMode(enable: true); // バックグラウンドでの動作を許可
           bool _serviceEnabled;
           PermissionStatus _permissionGranted;
           LocationData _locationData;
@@ -328,7 +330,8 @@ class _MapPageState extends State<MapPage> {
   bool addMode = false;
   var mapIcon = Icon(Icons.add);
   bool isCelectPlace = false; //場所を選択しているか。trueでリマインド作成可能
-  
+  Location location = Location();
+  LocationData? _currentLocation;
   List<Reminder> reminders = [];
 
   @override
@@ -341,8 +344,22 @@ class _MapPageState extends State<MapPage> {
     reminders = widget.reminders;
     //loadData();
     loadMapPin();
+    getLocation();
   }
 
+  Future<void> getLocation() async {
+    location.onLocationChanged.listen((LocationData currentLocation) {
+      setState(() {
+        _currentLocation = currentLocation;
+        print("更新された位置情報");
+        print(_currentLocation);
+      });
+    });
+    await location.changeSettings(
+      accuracy: LocationAccuracy.powerSave,
+      distanceFilter: 4, // 4mの位置変化で観測
+    );
+  }
 
   List<Marker> addMarkers = [];
   //マーカー用のList
