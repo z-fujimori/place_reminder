@@ -312,6 +312,11 @@ class _HomeState extends State<Home> with WidgetsBindingObserver { //WidgetsBind
 
 
 
+
+
+
+
+
 class MapPage extends StatefulWidget {
   const MapPage({Key? key, required this.value, required this.isar, required this.reminders}) : super(key: key);
   final Isar isar;
@@ -349,6 +354,9 @@ class _MapPageState extends State<MapPage> {
 
   Future<void> getLocation() async {
     location.onLocationChanged.listen((LocationData currentLocation) {
+      double change_lat = currentLocation.latitude!; 
+      double change_long = currentLocation.longitude!; 
+      chengeCircleMarker(change_lat, change_long);
       setState(() {
         _currentLocation = currentLocation;
         print("更新された位置情報");
@@ -357,14 +365,16 @@ class _MapPageState extends State<MapPage> {
     });
     await location.changeSettings(
       accuracy: LocationAccuracy.powerSave,
-      distanceFilter: 4, // 4mの位置変化で観測
+      distanceFilter: 3, // 3mの位置変化で観測
     );
   }
 
   List<Marker> addMarkers = [];
+  List<Marker> addSelectMarker = [];
   //マーカー用のList
   //ピンを追加する関数
   void _addMarker(LatLng latlong,String title, String? memo, bool isVib) {
+    addSelectMarker = []; // 候補ピンの初期化
     //マップの更新
     setState(() {
       addMarkers.add(
@@ -390,11 +400,11 @@ class _MapPageState extends State<MapPage> {
   //remindd作成候補のピンを立てる
   void _addTempMarker(LatLng latlong) {
     if (isCelectPlace) {
-      addMarkers.removeLast();
+      addSelectMarker.removeLast();
     }
     //マップの更新
     setState(() {
-      addMarkers.add(
+      addSelectMarker.add(
         Marker(
           width: 30.0,
           height: 30.0,
@@ -640,7 +650,7 @@ class _MapPageState extends State<MapPage> {
               options: MapOptions(
                 initialCenter: LatLng(lat, long),
                 //initialCenter: LatLng(43.0602767, 141.379295),
-                initialZoom: 12.0,
+                initialZoom: 13.0,
                 //pointはタップした位置がLatLong型で受け取る
                 onTap: (tapPosition, point) {
                   _addTempMarker(point);
@@ -657,7 +667,7 @@ class _MapPageState extends State<MapPage> {
                   circles: circleMarkers,
                 ),
                 //MarkerLeyerに追加したピンの指定
-                MarkerLayer(markers: addMarkers),
+                MarkerLayer(markers: addMarkers+addSelectMarker),
               ],
             ),
             Stack(
@@ -771,6 +781,19 @@ class _MapPageState extends State<MapPage> {
       borderStrokeWidth: 3,
       point: LatLng(latitude, longitude),
     );
+    circleMarkers.add(circleMarler);
+  }
+  void chengeCircleMarker(double latitude, double longitude) {
+    print(latitude);
+    print(longitude);
+    CircleMarker circleMarler = CircleMarker(
+      color: Colors.indigo.withOpacity(0.9),
+      radius: 10,
+      borderColor: Colors.white.withOpacity(0.9),
+      borderStrokeWidth: 3,
+      point: LatLng(latitude, longitude),
+    );
+    circleMarkers.removeLast();
     circleMarkers.add(circleMarler);
   }
 }
