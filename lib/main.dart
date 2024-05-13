@@ -20,6 +20,7 @@ import 'package:isar/isar.dart';
 //import 'package:isar_app/model/reminder.dart';
 //import 'package:isar_app/view.dart';
 import 'package:path_provider/path_provider.dart';
+import 'dart:math';
 
 void main() async{
   WidgetsFlutterBinding.ensureInitialized();
@@ -290,10 +291,6 @@ class _HomeState extends State<Home> with WidgetsBindingObserver { //WidgetsBind
             }
           }
           _locationData = await location.getLocation();
-          print("!!");
-
-          //Position position = await Geolocator.getCurrentPosition(
-          //  desiredAccuracy: LocationAccuracy.high);
           final lat = _locationData.latitude!;
           final long = _locationData.longitude!;
           print('非同期$lat');
@@ -352,6 +349,21 @@ class _MapPageState extends State<MapPage> {
     getLocation();
   }
 
+  final double  RX = 6378.137; // 回転楕円体の長半径（赤道半径）[km]
+  final double RY = 6356.752; // 回転楕円体の短半径（極半径) [km]
+  //緯度軽度から距離を計算
+  double hubeny_distance(double x1, double y1, double x2, double y2) {
+    double dx = x2 - x1, dy = y2 - y1;
+    double mu = (y1 + y2) / 2.0; // μ
+    double E = sqrt(1 - pow(RY / RX, 2.0)); // 離心率
+    double W = sqrt(1 - pow(E * sin(mu), 2.0));
+    double M = RX * (1 - pow(E, 2.0)) / pow(W, 3.0); // 子午線曲率半径
+    double N = RX / W; // 卯酉線曲率半径
+    return sqrt(pow(M * dy, 2.0) + pow(N * dx * cos(mu), 2.0)); // 距離[km]
+  }
+
+  //位置情報が更新された時に動く
+  double dis = 0;
   Future<void> getLocation() async {
     location.onLocationChanged.listen((LocationData currentLocation) {
       double change_lat = currentLocation.latitude!; 
@@ -359,6 +371,10 @@ class _MapPageState extends State<MapPage> {
       chengeCircleMarker(change_lat, change_long);
       setState(() {
         _currentLocation = currentLocation;
+        for (Reminder item in reminders) {
+          dis = hubeny_distance(change_lat, change_long, item.lat!, item.long!);
+          print("キョリ　[$dis] m");
+        };
         print("更新された位置情報");
         print(_currentLocation);
       });
