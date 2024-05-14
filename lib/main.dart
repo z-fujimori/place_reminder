@@ -62,6 +62,8 @@ class _HomeState extends State<Home> with WidgetsBindingObserver { //WidgetsBind
     WidgetsBinding.instance!.addObserver(this); //状態管理
     _init();
     loadData();
+    initLocation();
+    getLocation();
   }
   @override
   void dispose() {
@@ -165,7 +167,65 @@ class _HomeState extends State<Home> with WidgetsBindingObserver { //WidgetsBind
       reminders = data;
     });
   }
-  
+
+  // 位置情報　常に現在位置を取得して関数が動くようにする
+  Future<void> initLocation() async {
+    bool _serviceEnabled;
+    Location location = new Location();
+    PermissionStatus _permissionGranted;
+    _serviceEnabled = await location.serviceEnabled();
+    if (!_serviceEnabled) {
+      _serviceEnabled = await location.requestService();
+      if (!_serviceEnabled) {
+        return Future.error('Location permissions are denied');      
+      }
+    }
+    _permissionGranted = await location.hasPermission();
+    if (_permissionGranted == PermissionStatus.denied) {
+      _permissionGranted = await location.requestPermission();
+      if (_permissionGranted != PermissionStatus.granted) {
+        return Future.error('Location permissions are denied');      
+      }
+    }
+  }
+  final double  RX = 6378.137; // 回転楕円体の長半径（赤道半径）[km]
+  final double RY = 6356.752; // 回転楕円体の短半径（極半径) [km]
+  LocationData? _currentLocation;
+  List<CircleMarker> circleMarkers = [];
+  Location location = Location();
+  double dis = 0;
+  double change_lat = 35.6809591; // 東京駅
+  double change_long = 139.7673068; // 東京駅
+  //緯度軽度から距離を計算
+  double hubeny_distance(double x1, double y1, double x2, double y2) {
+    double dx = x2 - x1, dy = y2 - y1;
+    double mu = (y1 + y2) / 2.0; // μ
+    double E = sqrt(1 - pow(RY / RX, 2.0)); // 離心率
+    double W = sqrt(1 - pow(E * sin(mu), 2.0));
+    double M = RX * (1 - pow(E, 2.0)) / pow(W, 3.0); // 子午線曲率半径
+    double N = RX / W; // 卯酉線曲率半径
+    return sqrt(pow(M * dy, 2.0) + pow(N * dx * cos(mu), 2.0)); // 距離[km]
+  }
+  Future<void> getLocation() async {
+    location.onLocationChanged.listen((LocationData currentLocation) {
+      change_lat = currentLocation.latitude!; 
+      change_long = currentLocation.longitude!; 
+      setState(() {
+        _currentLocation = currentLocation;
+        for (Reminder item in reminders) {
+          dis = hubeny_distance(change_lat, change_long, item.lat!, item.long!);
+          print("キョリ　[$dis] m");
+        };
+        print("更新された位置情報");
+        print(_currentLocation);
+      });
+    });
+    await location.changeSettings(
+      accuracy: LocationAccuracy.powerSave,
+      distanceFilter: 1, // 3mの位置変化で観測
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
 
@@ -270,31 +330,31 @@ class _HomeState extends State<Home> with WidgetsBindingObserver { //WidgetsBind
       floatingActionButton: FloatingActionButton(
         child: Icon(Icons.map_outlined),
         onPressed: () async {
-          Location location = new Location();
-          location.enableBackgroundMode(enable: true); // バックグラウンドでの動作を許可
-          bool _serviceEnabled;
-          PermissionStatus _permissionGranted;
-          LocationData _locationData;
-          _serviceEnabled = await location.serviceEnabled();
-          if (!_serviceEnabled) {
-            _serviceEnabled = await location.requestService();
-            if (!_serviceEnabled) {
-              return;
-            }
-          }
+          //Location location = new Location();
+          // location.enableBackgroundMode(enable: true); // バックグラウンドでの動作を許可
+          // bool _serviceEnabled;
+          // PermissionStatus _permissionGranted;
+          // LocationData _locationData;
+          // _serviceEnabled = await location.serviceEnabled();
+          // if (!_serviceEnabled) {
+          //   _serviceEnabled = await location.requestService();
+          //   if (!_serviceEnabled) {
+          //     return;
+          //   }
+          // }
           print("!");
-          _permissionGranted = await location.hasPermission();
-          if (_permissionGranted == PermissionStatus.denied) {
-            _permissionGranted = await location.requestPermission();
-            if (_permissionGranted != PermissionStatus.granted) {
-              return;
-            }
-          }
-          _locationData = await location.getLocation();
-          final lat = _locationData.latitude!;
-          final long = _locationData.longitude!;
-          print('非同期$lat');
-          List<double> latlong = [lat,long];
+          // _permissionGranted = await location.hasPermission();
+          // if (_permissionGranted == PermissionStatus.denied) {
+          //   _permissionGranted = await location.requestPermission();
+          //   if (_permissionGranted != PermissionStatus.granted) {
+          //     return;
+          //   }
+          // }
+          // _locationData = await location.getLocation();
+          // final lat = _locationData.latitude!;
+          // final long = _locationData.longitude!;
+          print('非同期$change_lat,$change_long');
+          List<double> latlong = [change_lat,change_long];
           Navigator.push(
             context, 
             MaterialPageRoute(
