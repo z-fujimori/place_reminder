@@ -1,6 +1,7 @@
 import 'dart:async';
 //import 'dart:ffi';
 
+import 'package:alarm/model/alarm_settings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -20,6 +21,7 @@ import 'package:isar/isar.dart';
 //import 'package:isar_app/model/reminder.dart';
 //import 'package:isar_app/view.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:alarm/alarm.dart';
 import 'dart:math';
 
 void main() async{
@@ -53,6 +55,7 @@ class Home extends StatefulWidget {
   State<Home> createState() => _HomeState();
 }
 class _HomeState extends State<Home> with WidgetsBindingObserver { //WidgetsBindingObserver で状態を監視 paused.resumed.inactive.detached
+
   
   final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
   //flutter_local_notificationの初期化
@@ -222,7 +225,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver { //WidgetsBind
     });
     await location.changeSettings(
       accuracy: LocationAccuracy.powerSave,
-      distanceFilter: 1, // 3mの位置変化で観測
+      distanceFilter: 3, // mの位置変化で観測
     );
   }
 
@@ -230,27 +233,29 @@ class _HomeState extends State<Home> with WidgetsBindingObserver { //WidgetsBind
   Widget build(BuildContext context) {
 
     return Scaffold(
-      body: ListView.builder(
-        itemCount: reminders.length,
-        itemBuilder: (context, index) {
-          final reminder = reminders[index];
-          return ListTile(
-            title: Text(
-              reminder.title ?? "!! 値が入ってません !!",
-              overflow: TextOverflow.ellipsis,
-            ),
-            trailing: IconButton(
-              icon: const Icon(Icons.delete),
-              onPressed: () async {
-                // ここでデータベースから削除しています
-                await widget.isar.writeTxn(() async {
-                  await widget.isar.reminders.delete(reminder.id);
-                });
-                await loadData();
-              },
-            )
-          );
-        },
+      body: Container(
+        child: ListView.builder(
+          itemCount: reminders.length,
+          itemBuilder: (context, index) {
+            final reminder = reminders[index];
+            return ListTile(
+              title: Text(
+                reminder.title ?? "!! 値が入ってません !!",
+                overflow: TextOverflow.ellipsis,
+              ),
+              trailing: IconButton(
+                icon: const Icon(Icons.delete),
+                onPressed: () async {
+                  // ここでデータベースから削除しています
+                  await widget.isar.writeTxn(() async {
+                    await widget.isar.reminders.delete(reminder.id);
+                  });
+                  await loadData();
+                },
+              )
+            );
+          },
+        ),
       ),
       
       // Center(
@@ -327,41 +332,67 @@ class _HomeState extends State<Home> with WidgetsBindingObserver { //WidgetsBind
       //     ],
       //   ),
       // ),
-      floatingActionButton: FloatingActionButton(
-        child: Icon(Icons.map_outlined),
-        onPressed: () async {
-          //Location location = new Location();
-          // location.enableBackgroundMode(enable: true); // バックグラウンドでの動作を許可
-          // bool _serviceEnabled;
-          // PermissionStatus _permissionGranted;
-          // LocationData _locationData;
-          // _serviceEnabled = await location.serviceEnabled();
-          // if (!_serviceEnabled) {
-          //   _serviceEnabled = await location.requestService();
-          //   if (!_serviceEnabled) {
-          //     return;
-          //   }
-          // }
-          print("!");
-          // _permissionGranted = await location.hasPermission();
-          // if (_permissionGranted == PermissionStatus.denied) {
-          //   _permissionGranted = await location.requestPermission();
-          //   if (_permissionGranted != PermissionStatus.granted) {
-          //     return;
-          //   }
-          // }
-          // _locationData = await location.getLocation();
-          // final lat = _locationData.latitude!;
-          // final long = _locationData.longitude!;
-          print('非同期$change_lat,$change_long');
-          List<double> latlong = [change_lat,change_long];
-          Navigator.push(
-            context, 
-            MaterialPageRoute(
-              builder: (context) => MapPage(value: latlong, isar: widget.isar, reminders: reminders),
+      // floatingActionButton: FloatingActionButton(
+      //   child: Icon(Icons.map_outlined),
+      //   onPressed: () async {
+      //     print("!");
+      //     print('非同期$change_lat,$change_long');
+      //     List<double> latlong = [change_lat,change_long];
+      //     Navigator.push(
+      //       context, 
+      //       MaterialPageRoute(
+      //         builder: (context) => MapPage(value: latlong, isar: widget.isar, reminders: reminders),
+      //       ),
+      //     );
+      //   },
+      // ),
+      floatingActionButton: Row(
+        children: [
+          Container(
+            child: FloatingActionButton(
+              child: Icon(Icons.map_outlined),
+              onPressed: () async {
+                print("!");
+                print('非同期$change_lat,$change_long');
+                List<double> latlong = [change_lat,change_long];
+                Navigator.push(
+                  context, 
+                  MaterialPageRoute(
+                    builder: (context) => MapPage(value: latlong, isar: widget.isar, reminders: reminders),
+                  ),
+                );
+              },
             ),
-          );
-        },
+          ),
+          FloatingActionButton(
+            child: Icon(Icons.check),
+            onPressed: () async {
+              print("２個目のボタン");
+              await Alarm.init();
+              DateTime now = DateTime.now();
+              now = now.add(Duration(seconds: 10));
+              AlarmSettings alarmSettings = AlarmSettings(
+                id: 42,
+                dateTime: now,
+                assetAudioPath: 'assets/walk.mp3',
+                loopAudio: true,
+                vibrate: true,
+                fadeDuration: 3.0,
+                notificationTitle: 'This is the title',
+                notificationBody: 'This is the body',
+                enableNotificationOnKill: true,
+              );
+              await Alarm.set(alarmSettings: alarmSettings);
+            },
+          ),
+          FloatingActionButton(
+            child: Icon(Icons.stop),
+            onPressed: () async {
+              print("２個目のボタン");
+              await Alarm.stop(42);
+            },
+          )
+        ],
       ),
     );
   }
