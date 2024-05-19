@@ -191,6 +191,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver { //WidgetsBind
       }
     }
   }
+  bool onAlarm = false;
   final double  RX = 6378.137; // 回転楕円体の長半径（赤道半径）[km]
   final double RY = 6356.752; // 回転楕円体の短半径（極半径) [km]
   LocationData? _currentLocation;
@@ -218,15 +219,37 @@ class _HomeState extends State<Home> with WidgetsBindingObserver { //WidgetsBind
         for (Reminder item in reminders) {
           dis = hubeny_distance(change_lat, change_long, item.lat!, item.long!);
           print("キョリ　[$dis] m");
+          if (dis < 0.5 && !onAlarm) {
+            startAlarm();
+            onAlarm = true;
+          }
         };
         print("更新された位置情報");
         print(_currentLocation);
       });
     });
     await location.changeSettings(
-      accuracy: LocationAccuracy.powerSave,
-      distanceFilter: 3, // mの位置変化で観測
+      accuracy: LocationAccuracy.high, //LocationAccuracy.powerSave にすると低電力で最大の精度
+      distanceFilter: 2, // mの位置変化で観測
     );
+  }
+  Future<void> startAlarm() async {
+    print("start");
+    await Alarm.init();
+    DateTime now = DateTime.now();
+    now = now.add(Duration(seconds: 10));
+    AlarmSettings alarmSettings = AlarmSettings(
+      id: 42,
+      dateTime: now,
+      assetAudioPath: 'assets/walk.mp3',
+      loopAudio: true,
+      vibrate: true,
+      fadeDuration: 3.0,
+      notificationTitle: 'This is the title',
+      notificationBody: 'This is the body',
+      enableNotificationOnKill: true,
+    );
+    await Alarm.set(alarmSettings: alarmSettings);
   }
 
   @override
@@ -243,15 +266,30 @@ class _HomeState extends State<Home> with WidgetsBindingObserver { //WidgetsBind
                 reminder.title ?? "!! 値が入ってません !!",
                 overflow: TextOverflow.ellipsis,
               ),
-              trailing: IconButton(
-                icon: const Icon(Icons.delete),
-                onPressed: () async {
-                  // ここでデータベースから削除しています
-                  await widget.isar.writeTxn(() async {
-                    await widget.isar.reminders.delete(reminder.id);
-                  });
-                  await loadData();
-                },
+              trailing: Wrap(
+                spacing: 10,
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.pause),
+                    onPressed: () async {
+                      print("stop!!");
+                      await Alarm.stop(42);
+                      if (onAlarm) {
+                        onAlarm = false;
+                      }
+                    }, 
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete),
+                    onPressed: () async {
+                      // ここでデータベースから削除しています
+                      await widget.isar.writeTxn(() async {
+                        await widget.isar.reminders.delete(reminder.id);
+                      });
+                      await loadData();
+                    },
+                  ),
+                ],
               )
             );
           },
@@ -332,68 +370,71 @@ class _HomeState extends State<Home> with WidgetsBindingObserver { //WidgetsBind
       //     ],
       //   ),
       // ),
-      // floatingActionButton: FloatingActionButton(
-      //   child: Icon(Icons.map_outlined),
-      //   onPressed: () async {
-      //     print("!");
-      //     print('非同期$change_lat,$change_long');
-      //     List<double> latlong = [change_lat,change_long];
-      //     Navigator.push(
-      //       context, 
-      //       MaterialPageRoute(
-      //         builder: (context) => MapPage(value: latlong, isar: widget.isar, reminders: reminders),
-      //       ),
-      //     );
-      //   },
-      // ),
-      floatingActionButton: Row(
-        children: [
-          Container(
-            child: FloatingActionButton(
-              child: Icon(Icons.map_outlined),
-              onPressed: () async {
-                print("!");
-                print('非同期$change_lat,$change_long');
-                List<double> latlong = [change_lat,change_long];
-                Navigator.push(
-                  context, 
-                  MaterialPageRoute(
-                    builder: (context) => MapPage(value: latlong, isar: widget.isar, reminders: reminders),
-                  ),
-                );
-              },
+      floatingActionButton: FloatingActionButton(
+        child: Icon(Icons.map_outlined),
+        onPressed: () async {
+          print("!");
+          print('非同期$change_lat,$change_long');
+          List<double> latlong = [change_lat,change_long];
+          Navigator.push(
+            context, 
+            MaterialPageRoute(
+              builder: (context) => MapPage(value: latlong, isar: widget.isar, reminders: reminders),
             ),
-          ),
-          FloatingActionButton(
-            child: Icon(Icons.check),
-            onPressed: () async {
-              print("２個目のボタン");
-              await Alarm.init();
-              DateTime now = DateTime.now();
-              now = now.add(Duration(seconds: 10));
-              AlarmSettings alarmSettings = AlarmSettings(
-                id: 42,
-                dateTime: now,
-                assetAudioPath: 'assets/walk.mp3',
-                loopAudio: true,
-                vibrate: true,
-                fadeDuration: 3.0,
-                notificationTitle: 'This is the title',
-                notificationBody: 'This is the body',
-                enableNotificationOnKill: true,
-              );
-              await Alarm.set(alarmSettings: alarmSettings);
-            },
-          ),
-          FloatingActionButton(
-            child: Icon(Icons.stop),
-            onPressed: () async {
-              print("２個目のボタン");
-              await Alarm.stop(42);
-            },
-          )
-        ],
+          );
+        },
       ),
+
+
+
+      // floatingActionButton: Row(
+      //   children: [
+      //     Container(
+      //       child: FloatingActionButton(
+      //         child: Icon(Icons.map_outlined),
+      //         onPressed: () async {
+      //           print("!");
+      //           print('非同期$change_lat,$change_long');
+      //           List<double> latlong = [change_lat,change_long];
+      //           Navigator.push(
+      //             context, 
+      //             MaterialPageRoute(
+      //               builder: (context) => MapPage(value: latlong, isar: widget.isar, reminders: reminders),
+      //             ),
+      //           );
+      //         },
+      //       ),
+      //     ),
+      //     FloatingActionButton(
+      //       child: Icon(Icons.check),
+      //       onPressed: () async {
+      //         print("２個目のボタン");
+      //         await Alarm.init();
+      //         DateTime now = DateTime.now();
+      //         now = now.add(Duration(seconds: 10));
+      //         AlarmSettings alarmSettings = AlarmSettings(
+      //           id: 42,
+      //           dateTime: now,
+      //           assetAudioPath: 'assets/walk.mp3',
+      //           loopAudio: true,
+      //           vibrate: true,
+      //           fadeDuration: 3.0,
+      //           notificationTitle: 'This is the title',
+      //           notificationBody: 'This is the body',
+      //           enableNotificationOnKill: true,
+      //         );
+      //         await Alarm.set(alarmSettings: alarmSettings);
+      //       },
+      //     ),
+      //     FloatingActionButton(
+      //       child: Icon(Icons.stop),
+      //       onPressed: () async {
+      //         print("２個目のボタン");
+      //         await Alarm.stop(42);
+      //       },
+      //     )
+      //   ],
+      // ),
     );
   }
 }
@@ -471,8 +512,8 @@ class _MapPageState extends State<MapPage> {
       });
     });
     await location.changeSettings(
-      accuracy: LocationAccuracy.powerSave,
-      distanceFilter: 3, // 3mの位置変化で観測
+      accuracy: LocationAccuracy.high, //LocationAccuracy.powerSave にすると低電力で最大の精度
+      distanceFilter: 2, // 3mの位置変化で観測
     );
   }
 
