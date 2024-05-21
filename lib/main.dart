@@ -66,7 +66,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver { //WidgetsBind
     _init();
     loadData();
     initLocation();
-    getLocation();
+    //getLocation();
   }
   @override
   void dispose() {
@@ -171,6 +171,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver { //WidgetsBind
     });
   }
 
+
   // 位置情報　常に現在位置を取得して関数が動くようにする
   Future<void> initLocation() async {
     bool _serviceEnabled;
@@ -190,6 +191,8 @@ class _HomeState extends State<Home> with WidgetsBindingObserver { //WidgetsBind
         return Future.error('Location permissions are denied');      
       }
     }
+    location.enableBackgroundMode();
+    getLocation();
   }
   bool onAlarm = false;
   final double  RX = 6378.137; // 回転楕円体の長半径（赤道半径）[km]
@@ -230,7 +233,8 @@ class _HomeState extends State<Home> with WidgetsBindingObserver { //WidgetsBind
     });
     await location.changeSettings(
       accuracy: LocationAccuracy.high, //LocationAccuracy.powerSave にすると低電力で最大の精度
-      distanceFilter: 2, // mの位置変化で観測
+      interval: 1, //間隔　デバック用
+      //distanceFilter: 2, // mの位置変化で観測
     );
   }
   Future<void> startAlarm() async {
@@ -251,6 +255,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver { //WidgetsBind
     );
     await Alarm.set(alarmSettings: alarmSettings);
   }
+
 
   @override
   Widget build(BuildContext context) {
