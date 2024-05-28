@@ -10,4 +10,5 @@ class Reminder {
   double? lat;
   double? long;
   bool? isVib;
+  bool isAlarm = false;
 }
