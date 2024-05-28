@@ -1,6 +1,7 @@
 import 'dart:async';
 //import 'dart:ffi';
 
+import 'package:alarm/model/alarm_settings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -20,6 +21,7 @@ import 'package:isar/isar.dart';
 //import 'package:isar_app/model/reminder.dart';
 //import 'package:isar_app/view.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:alarm/alarm.dart';
 import 'dart:math';
 
 void main() async{
@@ -53,6 +55,7 @@ class Home extends StatefulWidget {
   State<Home> createState() => _HomeState();
 }
 class _HomeState extends State<Home> with WidgetsBindingObserver { //WidgetsBindingObserver で状態を監視 paused.resumed.inactive.detached
+
   
   final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
   //flutter_local_notificationの初期化
@@ -63,7 +66,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver { //WidgetsBind
     _init();
     loadData();
     initLocation();
-    getLocation();
+    //getLocation();
   }
   @override
   void dispose() {
@@ -168,6 +171,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver { //WidgetsBind
     });
   }
 
+
   // 位置情報　常に現在位置を取得して関数が動くようにする
   Future<void> initLocation() async {
     bool _serviceEnabled;
@@ -187,8 +191,12 @@ class _HomeState extends State<Home> with WidgetsBindingObserver { //WidgetsBind
         return Future.error('Location permissions are denied');      
       }
     }
+    location.enableBackgroundMode();
+    getLocation();
   }
-  final double  RX = 6378.137; // 回転楕円体の長半径（赤道半径）[km]
+  bool onAlarm = false;
+  int alarmId = 0;
+  final double RX = 6378.137; // 回転楕円体の長半径（赤道半径）[km]
   final double RY = 6356.752; // 回転楕円体の短半径（極半径) [km]
   LocationData? _currentLocation;
   List<CircleMarker> circleMarkers = [];
@@ -196,6 +204,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver { //WidgetsBind
   double dis = 0;
   double change_lat = 35.6809591; // 東京駅
   double change_long = 139.7673068; // 東京駅
+  double alarm_dis = 2; //アラームの距離　デバッグ
   //緯度軽度から距離を計算
   double hubeny_distance(double x1, double y1, double x2, double y2) {
     double dx = x2 - x1, dy = y2 - y1;
@@ -215,42 +224,125 @@ class _HomeState extends State<Home> with WidgetsBindingObserver { //WidgetsBind
         for (Reminder item in reminders) {
           dis = hubeny_distance(change_lat, change_long, item.lat!, item.long!);
           print("キョリ　[$dis] m");
+          if (dis < alarm_dis && !onAlarm) {
+            startAlarm(42); //koko ara-mu on
+            setState(() {
+              alarmId = item.id;
+              onAlarm = true;
+            });
+          }
         };
         print("更新された位置情報");
         print(_currentLocation);
       });
     });
     await location.changeSettings(
-      accuracy: LocationAccuracy.powerSave,
-      distanceFilter: 1, // 3mの位置変化で観測
+      accuracy: LocationAccuracy.high, //LocationAccuracy.powerSave にすると低電力で最大の精度
+      interval: 1, //間隔　デバック用
+      //distanceFilter: 2, // mの位置変化で観測
     );
   }
+  Future<void> startAlarm(int id) async {
+    print("start");
+    await Alarm.init();
+    DateTime now = DateTime.now();
+    now = now.add(Duration(seconds: 10));
+    AlarmSettings alarmSettings = AlarmSettings(
+      id: id,
+      dateTime: now,
+      assetAudioPath: 'assets/walk.mp3',
+      loopAudio: true,
+      vibrate: true,
+      fadeDuration: 3.0,
+      notificationTitle: 'This is the title',
+      notificationBody: 'This is the body',
+      enableNotificationOnKill: true,
+    );
+    await Alarm.set(alarmSettings: alarmSettings);
+  }
+
 
   @override
   Widget build(BuildContext context) {
+    if (reminders.length == 0){
+      return Scaffold(
+        body: const Center(
+          child: Text(
+            "右下からメモを追加しよう！",
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey,
+                shadows: <Shadow>[
+                  Shadow(
+                    color: Color.fromARGB(222, 207, 202, 202),
+                    offset: Offset(3.0, 3.0),
+                    blurRadius: 3.0,
+                  ),
+                ],
+              ),  
+            )
+        ),
+            
+          
+        floatingActionButton: FloatingActionButton(
+          child: Icon(Icons.map_outlined),
+          onPressed: () async {
+            print("!");
+            print('非同期$change_lat,$change_long');
+            List<double> latlong = [change_lat,change_long];
+            Navigator.push(
+              context, 
+              MaterialPageRoute(
+                builder: (context) => MapPage(value: latlong, isar: widget.isar, reminders: reminders),
+              ),
+            );
+          },
+        ),
+      );
+    } else {
 
     return Scaffold(
-      body: ListView.builder(
-        itemCount: reminders.length,
-        itemBuilder: (context, index) {
-          final reminder = reminders[index];
-          return ListTile(
-            title: Text(
-              reminder.title ?? "!! 値が入ってません !!",
-              overflow: TextOverflow.ellipsis,
-            ),
-            trailing: IconButton(
-              icon: const Icon(Icons.delete),
-              onPressed: () async {
-                // ここでデータベースから削除しています
-                await widget.isar.writeTxn(() async {
-                  await widget.isar.reminders.delete(reminder.id);
-                });
-                await loadData();
-              },
-            )
-          );
-        },
+      body: Container(
+        child: ListView.builder(
+          itemCount: reminders.length,
+          itemBuilder: (context, index) {
+            final reminder = reminders[index];
+            return ListTile(
+              title: Text(
+                reminder.title ?? "!! 値が入ってません !!",
+                overflow: TextOverflow.ellipsis,
+              ),
+              trailing: Wrap(
+                spacing: 10,
+                children: [ //koko
+                  (onAlarm && reminder.id==alarmId)?IconButton(
+                    icon: Icon(Icons.pause),
+                    onPressed: () async {
+                      print("stop!!");
+                      await Alarm.stop(42);
+                      if (onAlarm) {
+                        setState(() {
+                          onAlarm = false;
+                        });
+                      }
+                    }, 
+                  ): 
+                  IconButton(
+                    icon: const Icon(Icons.delete),
+                    onPressed: () async {
+                      // ここでデータベースから削除しています
+                      await widget.isar.writeTxn(() async {
+                        await widget.isar.reminders.delete(reminder.id);
+                      });
+                      await loadData();
+                    },
+                  ),
+                ],
+              )
+            );
+          },
+        ),
       ),
       
       // Center(
@@ -330,29 +422,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver { //WidgetsBind
       floatingActionButton: FloatingActionButton(
         child: Icon(Icons.map_outlined),
         onPressed: () async {
-          //Location location = new Location();
-          // location.enableBackgroundMode(enable: true); // バックグラウンドでの動作を許可
-          // bool _serviceEnabled;
-          // PermissionStatus _permissionGranted;
-          // LocationData _locationData;
-          // _serviceEnabled = await location.serviceEnabled();
-          // if (!_serviceEnabled) {
-          //   _serviceEnabled = await location.requestService();
-          //   if (!_serviceEnabled) {
-          //     return;
-          //   }
-          // }
           print("!");
-          // _permissionGranted = await location.hasPermission();
-          // if (_permissionGranted == PermissionStatus.denied) {
-          //   _permissionGranted = await location.requestPermission();
-          //   if (_permissionGranted != PermissionStatus.granted) {
-          //     return;
-          //   }
-          // }
-          // _locationData = await location.getLocation();
-          // final lat = _locationData.latitude!;
-          // final long = _locationData.longitude!;
           print('非同期$change_lat,$change_long');
           List<double> latlong = [change_lat,change_long];
           Navigator.push(
@@ -363,7 +433,13 @@ class _HomeState extends State<Home> with WidgetsBindingObserver { //WidgetsBind
           );
         },
       ),
+
+
+
+
     );
+    
+    }
   }
 }
 
@@ -440,8 +516,8 @@ class _MapPageState extends State<MapPage> {
       });
     });
     await location.changeSettings(
-      accuracy: LocationAccuracy.powerSave,
-      distanceFilter: 3, // 3mの位置変化で観測
+      accuracy: LocationAccuracy.high, //LocationAccuracy.powerSave にすると低電力で最大の精度
+      distanceFilter: 2, // 3mの位置変化で観測
     );
   }
 
@@ -639,7 +715,7 @@ class _MapPageState extends State<MapPage> {
                           children: <Widget>[
                             CheckboxListTile(
                               activeColor: Colors.blue,
-                              title: const Text('バイブレーションで通知を行う'),
+                              title: const Text('バイブレーション(ON,OFFに関わらず現在常にON)'),
                               //subtitle: Text('チェックボックスのサブタイトル'),
                               secondary: Icon(
                                 Icons.waving_hand,
@@ -661,12 +737,15 @@ class _MapPageState extends State<MapPage> {
                           ElevatedButton(
                             onPressed: () async {
                               //候補地ピンを削除
-                              reminders.removeLast();
+                              //reminders.removeLast();
+                              print("aaa");
+                              print(reminders);
                               //reminderを作成しDBに挿入
                               final reminder = Reminder() 
                                 ..title = title
                                 ..memo = memo
                                 ..isVib = _flagVib
+                                ..isAlarm = false
                                 ..lat = celect_la
                                 ..long = celect_lo;
                                 await widget.isar.writeTxn(() async{
@@ -695,12 +774,6 @@ class _MapPageState extends State<MapPage> {
                 ),
 
               ),
-              // actions: <Widget>[
-              //   TextButton(
-              //     child: const Text('閉じる'),
-              //     onPressed: () => Navigator.of(context).pop(),
-              //   )
-              // ],
             );
             
           }
